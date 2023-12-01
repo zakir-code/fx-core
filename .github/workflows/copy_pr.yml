@@ -1,0 +1,72 @@
+# 将私有仓库中合并到 main 分支的代码通过创建 PR 的方式提交到公开仓库中，
+# 同时只有 label 不为 no publish 的 PR 才会被提交到公开仓库中，是为了方便在私有仓库中提交不便公开的定制化内容
+# 使用方法：需要修改 pub_repo_owner 的值为公开仓库的拥有者, 同时设置 PAT 环境变量
+
+name: "Copy pr to publish repository"
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - closed
+
+permissions: read-all
+
+jobs:
+  copy_pr:
+    if: (github.event.pull_request.base.ref == 'main' && github.event.pull_request.merged == true && github.event.label.name != 'no publish') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set output
+        id: var
+        run: |
+          echo "pub_repo_owner=functionx" >> "$GITHUB_OUTPUT"
+          echo "repo_name=$(echo ${{ github.repository }} | sed 's#^[^/]*/##')" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "pr_branch_name=workflow_dispatch" >> "$GITHUB_OUTPUT"
+          else
+            echo "pr_branch_name=$(echo ${{ github.event.pull_request.head.ref }} | sed 's#^[^/]*/[^/]*/##')" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        id: checkout
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git init
+          git remote add origin ${{ github.server_url }}/${{ github.repository }}
+          gh auth setup-git
+          git fetch origin
+          git checkout -b main origin/main
+          echo "last_commit=$(git log -1 --format='%H')" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clone public repo
+        id: repo
+        run: |
+          git remote add pub-repo ${{ github.server_url }}/${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}.git
+          gh auth setup-git
+          git fetch pub-repo --depth=1
+          git checkout -b github-action/${{ steps.var.outputs.pr_branch_name }} pub-repo/main
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            git merge origin/main --allow-unrelated-histories
+          else
+            git cherry-pick ${{ steps.checkout.outputs.last_commit }}
+          fi
+          echo "remote_commit=$(git ls-remote pub-repo -h refs/heads/main | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "local_commit=$(git log -1 --format='%H')" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+
+      - name: Create PR
+        if: steps.repo.outputs.local_commit != steps.repo.outputs.remote_commit
+        run: |
+          git push --set-upstream pub-repo github-action/${{ steps.var.outputs.pr_branch_name }}
+          if [ "${{ github.event.pull_request.title }}" == "" ]; then
+            gh pr create --fill --head github-action/${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
+          else
+            gh pr create --title "${{ github.event.pull_request.title }}" --fill --head github-action/${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}

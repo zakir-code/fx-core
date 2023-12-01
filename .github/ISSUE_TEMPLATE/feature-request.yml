@@ -1,0 +1,21 @@
+name: Feature Request
+description: Create a proposal to request a feature
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ✰  非常感谢你创建 Issue ✰
+  - type: textarea
+    id: summary
+    attributes:
+      label: 功能说明
+      description: |
+        如果可以请回答下面的问题
+        为什么需要这个功能？
+        增加此功能可以解决那些问题？
+        增加此功能会带来那些不好的影响？
+      placeholder: 请对提议的功能进行简短、简明的描述
+    validations:
+      required: true

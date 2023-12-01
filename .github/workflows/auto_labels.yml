@@ -1,0 +1,42 @@
+# 当识别到某些特征之后，将自动为 PR 打上对应的标签
+
+name: "Auto Add Labels"
+
+on:
+  - pull_request_target
+
+permissions: write-all
+
+jobs:
+  labeler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@main
+        with:
+          configuration-path: .github/pr_labeler.yml
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          sync-labels: true
+
+      - name: Add bug label
+        if: "startsWith(github.event.pull_request.title, 'fix')"
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "bug" --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add feature label
+        if: "startsWith(github.event.pull_request.title, 'feat')"
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "feature" --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add 'no publish' label
+        if: "startsWith(github.event.pull_request.title, 'chore(self)')"
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "no publish" --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add invalid label
+        if: github.event.pull_request.merged == false && github.event.pull_request.state == 'closed'
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "invalid" --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

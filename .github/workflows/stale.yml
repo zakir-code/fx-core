@@ -1,0 +1,27 @@
+# 报告或关闭在指定时间内没有活动的 Issue 和 PR
+
+name: "Close stale issues & pull requests"
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+permissions:
+  contents: write # only for delete-branch option
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v8
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-pr-message: "这个 Pull Request 因长时间未有更新而被自动标记为过期，如果没有进一步的活动，它将会被关闭。感谢贡献。"
+          stale-issue-message: "这个 Issue 因长时间未活动而被自动标记为过期"
+          days-before-issue-stale: 30
+          days-before-close: -1
+          days-before-pr-stale: 30
+          days-before-pr-close: 4
+          exempt-pr-labels: "pinned, security, blocked" # 用逗号分隔的标签列表，如果 PR 有这些标签，就不会被标记为过期

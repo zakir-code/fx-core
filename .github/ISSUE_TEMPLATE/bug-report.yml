@@ -1,0 +1,41 @@
+name: Bug Report
+description: Create a report to help us squash bugs!
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你花时间填写这个bug报告！在提交按钮之前，请查看模板。
+
+  - type: checkboxes
+    attributes:
+      label: 是否是已经存在的问题？
+      description: 请搜索现有问题以避免创建重复问题。
+      options:
+        - label: 我已经搜索了现有的问题
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 什么问题？
+      description: 另外请告诉我们，你预计会发生什么？
+      placeholder: 告诉我们你看到了什么!
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: 版本
+      description: 请选择你正在使用的版本
+      placeholder: v0.1.1, v1.0.2, main, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 如何复现？
+      description: 如果可以，请提供一个可以复现问题的最小示例。
+      placeholder: 告诉我们如何复现这个 bug
+    validations:
+      required: false
