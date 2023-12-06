@@ -8,29 +8,29 @@ on:
 permissions: write-all
 
 jobs:
-  labeler:
+  auto_labels:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@main
+      - uses: actions/labeler@v5
         with:
           configuration-path: .github/pr_labeler.yml
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           sync-labels: true
 
       - name: Add bug label
-        if: "startsWith(github.event.pull_request.title, 'fix')"
-        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "bug" --repo ${{ github.repository }}
+        if: startsWith(github.event.pull_request.title, 'fix') && contains(github.event.pull_request.labels, 'bug') == false
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "bug" --remove-label "feature" --repo ${{ github.repository }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add feature label
-        if: "startsWith(github.event.pull_request.title, 'feat')"
-        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "feature" --repo ${{ github.repository }}
+        if: startsWith(github.event.pull_request.title, 'feat') && contains(github.event.pull_request.labels, 'feature') == false
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "feature" --remove-label "bug" --repo ${{ github.repository }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add 'no publish' label
-        if: "startsWith(github.event.pull_request.title, 'chore(self)')"
+        if: startsWith(github.event.pull_request.title, 'chore(self)') && contains(github.event.pull_request.labels, 'no publish') == false
         run: gh pr edit ${{ github.event.pull_request.number }} --add-label "no publish" --repo ${{ github.repository }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
