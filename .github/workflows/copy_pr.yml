@@ -14,7 +14,7 @@ permissions: read-all
 
 jobs:
   copy_pr:
-    if: (github.event.pull_request.base.ref == 'main' && github.event.pull_request.merged == true && !contains(github.event.pull_request.labels, 'no publish')) || github.event_name == 'workflow_dispatch'
+    if: (github.event.pull_request.base.ref == 'main' && github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'no publish')) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Set output
