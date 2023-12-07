@@ -52,7 +52,7 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             git merge origin/main --allow-unrelated-histories
           else
-            git cherry-pick ${{ steps.checkout.outputs.last_commit }}
+            git cherry-pick ${{ github.sha }}
           fi
           echo "remote_commit=$(git ls-remote pub-repo -h refs/heads/main | cut -f1)" >> "$GITHUB_OUTPUT"
           echo "local_commit=$(git log -1 --format='%H')" >> "$GITHUB_OUTPUT"
