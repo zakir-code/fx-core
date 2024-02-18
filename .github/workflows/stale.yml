@@ -15,7 +15,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v8
+      - uses: actions/stale@v9
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           stale-pr-message: "这个 Pull Request 因长时间未有更新而被自动标记为过期，如果没有进一步的活动，它将会被关闭。感谢贡献。"
