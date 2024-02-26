@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   copy_pr:
-    if: (github.event.pull_request.base.ref == 'main' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.title, 'chore(self)'))
+    if: (github.event.pull_request.base.ref == 'main' && github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(self)'))
     runs-on: ubuntu-latest
     steps:
       - name: Set output
