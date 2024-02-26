@@ -5,16 +5,17 @@
 name: "Copy pr to publish repository"
 
 on:
-  workflow_dispatch:
   pull_request:
     types:
       - closed
 
-permissions: read-all
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   copy_pr:
-    if: (github.event.pull_request.base.ref == 'main' && github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'no publish')) || github.event_name == 'workflow_dispatch'
+    if: (github.event.pull_request.base.ref == 'main' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.title, 'chore(self)'))
     runs-on: ubuntu-latest
     steps:
       - name: Set output
@@ -22,11 +23,7 @@ jobs:
         run: |
           echo "pub_repo_owner=functionx" >> "$GITHUB_OUTPUT"
           echo "repo_name=$(echo ${{ github.repository }} | sed 's#^[^/]*/##')" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "pr_branch_name=workflow_dispatch" >> "$GITHUB_OUTPUT"
-          else
-            echo "pr_branch_name=$(echo ${{ github.event.pull_request.head.ref }} | sed 's#^[^/]*/[^/]*/##')" >> "$GITHUB_OUTPUT"
-          fi
+          echo "pr_branch_name=$(echo ${{ github.event.pull_request.head.ref }} | sed 's#^[^/]*/[^/]*/##')" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         id: checkout
@@ -36,7 +33,7 @@ jobs:
           git init
           git remote add origin ${{ github.server_url }}/${{ github.repository }}
           gh auth setup-git
-          git fetch origin
+          git fetch origin main
           git checkout -b main origin/main
           echo "last_commit=$(git log -1 --format='%H')" >> "$GITHUB_OUTPUT"
         env:
@@ -47,26 +44,35 @@ jobs:
         run: |
           git remote add pub-repo ${{ github.server_url }}/${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}.git
           gh auth setup-git
-          git fetch pub-repo --depth=1
+          git fetch pub-repo main --depth=1
           git checkout -b github-action/${{ steps.var.outputs.pr_branch_name }} pub-repo/main
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            git merge origin/main --allow-unrelated-histories
-          else
-            git cherry-pick ${{ github.sha }}
-          fi
+          git cherry-pick ${{ github.sha }}
           echo "remote_commit=$(git ls-remote pub-repo -h refs/heads/main | cut -f1)" >> "$GITHUB_OUTPUT"
           echo "local_commit=$(git log -1 --format='%H')" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.PAT }}
 
       - name: Create PR
+        id: create-pr
         if: steps.repo.outputs.local_commit != steps.repo.outputs.remote_commit
         run: |
           git push --set-upstream pub-repo github-action/${{ steps.var.outputs.pr_branch_name }}
-          if [ "${{ github.event.pull_request.title }}" == "" ]; then
-            gh pr create --fill --head github-action/${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
-          else
-            gh pr create --title "${{ github.event.pull_request.title }}" --fill --head github-action/${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
-          fi
+          gh pr create --title "${{ github.event.pull_request.title }}" --fill --head github-action/${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
         env:
           GH_TOKEN: ${{ secrets.PAT }}
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        # When the previous steps fails, the workflow would stop. By adding this
+        # condition you can continue the execution with the populated error message.
+        if: ${{ always() && (steps.create-pr.conclusion != 'success' || steps.repo.conclusion != 'success') }}
+        with:
+          header: copy-pr-error
+          message: |
+            @xteam001/fxcore 请注意，Copy PR 运行失败，可以尝试手动再次运行。
+
+      # Delete a previous comment when the issue has been resolved
+      - if: ${{ steps.create-pr.conclusion == 'success' || steps.repo.conclusion == 'success' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: copy-pr-error
+          delete: true
