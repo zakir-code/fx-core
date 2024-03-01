@@ -53,7 +53,7 @@ jobs:
         id: create-pr
         run: |
           git push --set-upstream pub-repo ${{ steps.var.outputs.pr_branch_name }}
-          gh pr create --title "${{ github.event.pull_request.title }}" --head ${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
+          gh pr create --title "${{ github.event.pull_request.title }}" --body "" --head ${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
         env:
           GH_TOKEN: ${{ secrets.PAT }}
 
