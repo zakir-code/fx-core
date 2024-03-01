@@ -21,7 +21,7 @@ jobs:
       - name: Set output
         id: var
         run: |
-          echo "pub_repo_owner=functionx" >> "$GITHUB_OUTPUT"
+          echo "pub_repo_owner=zakir-code" >> "$GITHUB_OUTPUT"
           echo "repo_name=$(echo ${{ github.repository }} | sed 's#^[^/]*/##')" >> "$GITHUB_OUTPUT"
           echo "pr_branch_name=$(echo ${{ github.event.pull_request.head.ref }} | sed 's#^[^/]*/[^/]*/##')" >> "$GITHUB_OUTPUT"
 
@@ -33,9 +33,7 @@ jobs:
           git init
           git remote add origin ${{ github.server_url }}/${{ github.repository }}
           gh auth setup-git
-          git fetch origin main
-          git checkout -b main origin/main
-          echo "last_commit=$(git log -1 --format='%H')" >> "$GITHUB_OUTPUT"
+          git fetch origin main --depth=1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -45,19 +43,17 @@ jobs:
           git remote add pub-repo ${{ github.server_url }}/${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}.git
           gh auth setup-git
           git fetch pub-repo main --depth=1
-          git checkout -b github-action/${{ steps.var.outputs.pr_branch_name }} pub-repo/main
-          git cherry-pick ${{ github.sha }}
-          echo "remote_commit=$(git ls-remote pub-repo -h refs/heads/main | cut -f1)" >> "$GITHUB_OUTPUT"
-          echo "local_commit=$(git log -1 --format='%H')" >> "$GITHUB_OUTPUT"
+          git checkout -b ${{ steps.var.outputs.pr_branch_name }} pub-repo/main
+          git cherry-pick ${{ github.event.pull_request.merge_commit_sha }}
+          git commit --amend -m "${{ github.event.pull_request.title }}" --no-edit
         env:
           GH_TOKEN: ${{ secrets.PAT }}
 
       - name: Create PR
         id: create-pr
-        if: steps.repo.outputs.local_commit != steps.repo.outputs.remote_commit
         run: |
-          git push --set-upstream pub-repo github-action/${{ steps.var.outputs.pr_branch_name }}
-          gh pr create --title "${{ github.event.pull_request.title }}" --fill --head github-action/${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
+          git push --set-upstream pub-repo ${{ steps.var.outputs.pr_branch_name }}
+          gh pr create --title "${{ github.event.pull_request.title }}" --head ${{ steps.var.outputs.pr_branch_name }} --base main --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
         env:
           GH_TOKEN: ${{ secrets.PAT }}
 
