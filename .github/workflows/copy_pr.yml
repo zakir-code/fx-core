@@ -33,7 +33,7 @@ jobs:
           git init
           git remote add origin ${{ github.server_url }}/${{ github.repository }}
           gh auth setup-git
-          git fetch origin main --depth=1
+          git fetch origin main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
