@@ -4,21 +4,19 @@
 name: Gosec
 
 on:
-  push:
-    branches:
-      - main
+  pull_request_review:
+    types:
+      - submitted
     paths:
       - '**.go'
       - 'go.mod'
       - 'go.sum'
-  pull_request:
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
+      - '.golangci.yml'
+      - '.github/workflows/golang.yml'
 
 jobs:
   main:
+    if: github.event.review.state == 'APPROVED'
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
