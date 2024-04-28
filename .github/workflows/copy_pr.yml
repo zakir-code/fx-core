@@ -48,7 +48,7 @@ jobs:
         run: |
           git remote add pub-repo ${{ github.server_url }}/${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}.git
           gh auth setup-git
-          git fetch pub-repo main --depth=1
+          git fetch pub-repo ${{ steps.var.outputs.base_branch_name }} --depth=1
           git checkout -b ${{ steps.var.outputs.pr_branch_name }} pub-repo/${{ steps.var.outputs.base_branch_name }}
           git cherry-pick ${{ github.event.pull_request.merge_commit_sha }}
           git commit --amend -m "${{ github.event.pull_request.title }}" --no-edit
