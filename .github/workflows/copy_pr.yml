@@ -34,8 +34,8 @@ jobs:
       - name: Checkout
         id: checkout
         run: |
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+          git config --global user.email "80246097+zakir-code@users.noreply.github.com"
+          git config --global user.name "zakir"
           git init
           git remote add origin ${{ github.server_url }}/${{ github.repository }}
           gh auth setup-git
