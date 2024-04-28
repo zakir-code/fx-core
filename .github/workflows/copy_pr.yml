@@ -23,7 +23,7 @@ jobs:
         run: |
           echo "pub_repo_owner=functionx" >> "$GITHUB_OUTPUT"
           echo "repo_name=$(echo ${{ github.repository }} | sed 's#^[^/]*/##')" >> "$GITHUB_OUTPUT"
-          pr_branch_name=$(echo ${{ github.event.pull_request.head.ref }} | sed 's#^[^/]*/[^/]*/##')
+          pr_branch_name=${{ github.event.pull_request.head.ref }}
           echo "pr_branch_name=$pr_branch_name" >> "$GITHUB_OUTPUT"
           if [[ $pr_branch_name == */*/fix* ]]; then
             echo "base_branch_name=${pr_branch_name%%/fix*}" >> "$GITHUB_OUTPUT"
