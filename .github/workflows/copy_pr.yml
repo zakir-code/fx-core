@@ -22,14 +22,17 @@ jobs:
         id: var
         run: |
           echo "pub_repo_owner=functionx" >> "$GITHUB_OUTPUT"
-          echo "repo_name=$(echo ${{ github.repository }} | sed 's#^[^/]*/##')" >> "$GITHUB_OUTPUT"
+          echo "repo_name=$(echo "${{ github.repository }}" | sed 's#^[^/]*/##')" >> "$GITHUB_OUTPUT"
           pr_branch_name=${{ github.event.pull_request.head.ref }}
           echo "pr_branch_name=$pr_branch_name" >> "$GITHUB_OUTPUT"
-          if [[ $pr_branch_name == */*/fix* ]]; then
-            echo "base_branch_name=${pr_branch_name%%/fix*}" >> "$GITHUB_OUTPUT"
+          base_pr_number=$(echo "${{ github.event.pull_request.title }}" | cut -d '(' -f2 | cut -d ')' -f1)
+          if [[ $base_pr_number -gt 0 ]]; then
+            echo "base_branch_name=$(gh pr view $base_pr_number --repo functionx/fx-core --json headRefName --jq .headRefName)" >> "$GITHUB_OUTPUT"
           else
             echo "base_branch_name=main" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
 
       - name: Checkout
         id: checkout
@@ -63,18 +66,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT }}
 
-      - uses: marocchino/sticky-pull-request-comment@v2
         # When the previous steps fails, the workflow would stop. By adding this
         # condition you can continue the execution with the populated error message.
-        if: ${{ always() && (steps.create-pr.conclusion != 'success' || steps.repo.conclusion != 'success') }}
+      - if: ${{ always() && (steps.create-pr.conclusion != 'success' || steps.repo.conclusion != 'success') }}
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: copy-pr-error
           message: |
             @xteam001/fxcore 请注意，Copy PR 运行失败，可以尝试手动再次运行。
 
-      # Delete a previous comment when the issue has been resolved
+        # Delete a previous comment when the issue has been resolved
       - if: ${{ steps.create-pr.conclusion == 'success' || steps.repo.conclusion == 'success' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: copy-pr-error
           delete: true
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: ${{ steps.create-pr.conclusion == 'success' || steps.repo.conclusion == 'success' }}
+        with:
+          header: ref
+          message: Please go to https://github.com/functionx/fx-core/pull/${{ steps.var.outputs.pr_branch_name }} to continue the review
