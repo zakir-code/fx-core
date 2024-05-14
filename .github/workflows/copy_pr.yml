@@ -8,6 +8,7 @@ on:
   pull_request:
     types:
       - closed
+#      - synchronize
 
 permissions:
   contents: read
@@ -21,13 +22,14 @@ jobs:
       - name: Set output
         id: var
         run: |
-          echo "pub_repo_owner=functionx" >> "$GITHUB_OUTPUT"
-          echo "repo_name=$(echo "${{ github.repository }}" | sed 's#^[^/]*/##')" >> "$GITHUB_OUTPUT"
+          pub_repository="functionx/fx-core"
+          echo "pub_repository=$pub_repository" >> "$GITHUB_OUTPUT"
           pr_branch_name=${{ github.event.pull_request.head.ref }}
           echo "pr_branch_name=$pr_branch_name" >> "$GITHUB_OUTPUT"
           base_pr_number=$(echo "${{ github.event.pull_request.title }}" | cut -d '(' -f2 | cut -d ')' -f1)
+          echo "reference_url=${{ github.server_url }}/$pub_repository/pull/$pr_branch_name" >> "$GITHUB_OUTPUT"
           if [[ $base_pr_number -gt 0 ]]; then
-            echo "base_branch_name=$(gh pr view $base_pr_number --repo functionx/fx-core --json headRefName --jq .headRefName)" >> "$GITHUB_OUTPUT"
+            echo "base_branch_name=$(gh pr view $base_pr_number --repo $pub_repository --json headRefName --jq .headRefName)" >> "$GITHUB_OUTPUT"
           else
             echo "base_branch_name=main" >> "$GITHUB_OUTPUT"
           fi
@@ -49,7 +51,7 @@ jobs:
       - name: Clone public repo
         id: repo
         run: |
-          git remote add pub-repo ${{ github.server_url }}/${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}.git
+          git remote add pub-repo ${{ github.server_url }}/${{ steps.var.outputs.pub_repository }}.git
           gh auth setup-git
           git fetch pub-repo ${{ steps.var.outputs.base_branch_name }} --depth=1
           git checkout -b ${{ steps.var.outputs.pr_branch_name }} pub-repo/${{ steps.var.outputs.base_branch_name }}
@@ -62,7 +64,11 @@ jobs:
         id: create-pr
         run: |
           git push --set-upstream pub-repo ${{ steps.var.outputs.pr_branch_name }}
-          gh pr create --title "${{ github.event.pull_request.title }}" --body "" --head ${{ steps.var.outputs.pr_branch_name }} --base ${{ steps.var.outputs.base_branch_name }} --repo ${{ steps.var.outputs.pub_repo_owner }}/${{ steps.var.outputs.repo_name }}
+          body=""
+          if [[ ${{ steps.var.outputs.base_branch_name }} != "main" ]]; then
+            body="Ref: ${{ steps.var.outputs.reference_url }}"
+          fi
+          gh pr create --title "${{ github.event.pull_request.title }}" --body "$body" --head ${{ steps.var.outputs.pr_branch_name }} --base ${{ steps.var.outputs.base_branch_name }} --repo ${{ steps.var.outputs.pub_repository }}
         env:
           GH_TOKEN: ${{ secrets.PAT }}
 
@@ -85,5 +91,5 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: ${{ steps.create-pr.conclusion == 'success' || steps.repo.conclusion == 'success' }}
         with:
-          header: ref
-          message: Please go to https://github.com/functionx/fx-core/pull/${{ steps.var.outputs.pr_branch_name }} to continue the review
+          header: reference
+          message: Please go to ${{ steps.var.outputs.reference_url }} to continue the review
