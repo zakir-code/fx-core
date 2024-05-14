@@ -13,16 +13,34 @@ on:
       - 'go.sum'
       - '.golangci.yml'
       - '.github/workflows/golang.yml'
+      - '.github/workflows/gosec.yml'
+
+permissions:
+  pull-requests: write
 
 jobs:
   main:
-    if: github.event.review.state == 'APPROVED'
+    if: github.event.review.state == 'APPROVED' && !contains(github.event.pull_request.title, '(sub)') && !contains(github.event.pull_request.labels.*.name, 'approved')
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
     steps:
+      - name: Add Approve Label
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['approved']
+            })
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout Source
         uses: actions/checkout@v4
+
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
         with:
