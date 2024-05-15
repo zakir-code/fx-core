@@ -16,6 +16,7 @@ on:
       - '.github/workflows/gosec.yml'
 
 permissions:
+  contents: read
   pull-requests: write
 
 jobs:
