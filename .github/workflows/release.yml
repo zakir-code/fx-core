@@ -18,7 +18,9 @@ jobs:
       - name: Fetch tags
         run: git fetch --force --tags
       - name: Generate release note
-        run: ./contrib/scripts/release-note.sh ${GITHUB_REF#refs/*/}
+        run: |
+          chmod +x ./contrib/scripts/release-note.sh
+          ./contrib/scripts/release-note.sh ${GITHUB_REF#refs/*/}
       - name: Setup release environment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
