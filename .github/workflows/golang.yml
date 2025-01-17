@@ -9,6 +9,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - '.golangci.yml'
+      - '.github/workflows/golang.yml'
       - '!**.pb.go'
       - '!**.pb.gw.go'
       - '!**.pulsar.go'
