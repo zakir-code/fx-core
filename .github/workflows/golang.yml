@@ -3,7 +3,7 @@ name: Golang
 on:
   push:
     branches:
-      - zakir/**
+      - 'zakir/**'
     paths:
       - '**.go'
       - 'go.mod'
