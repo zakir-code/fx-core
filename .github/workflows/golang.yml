@@ -1,35 +1,12 @@
-name: Golang
+name: Local Golang
 
 on:
   push:
     branches:
       - 'zakir/**'
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yml'
-      - '.github/workflows/golang.yml'
-      - '!**.pb.go'
-      - '!**.pb.gw.go'
-      - '!**.pulsar.go'
-      - '!**.sol.go'
-      - '!statik.go'
-  pull_request:
-    types:
-      - opened
-      - synchronize
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yml'
-      - '.github/workflows/golang.yml'
-      - '!**.pb.go'
-      - '!**.pb.gw.go'
-      - '!**.pulsar.go'
-      - '!**.sol.go'
-      - '!statik.go'
+  #pull_request_review:
+  #  types:
+  #    - submitted
 
 permissions:
   contents: read
@@ -41,6 +18,7 @@ concurrency:
 jobs:
   custom-lint:
     runs-on: ubuntu-latest
+    #if: github.event.review.state == 'approved'
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -48,28 +26,62 @@ jobs:
           sudo dpkg -i ripgrep_14.1.0-1_amd64.deb
       - run: make custom-lint
 
-  test:
+  mock:
     runs-on: ubuntu-latest
+    #if: github.event.review.state == 'approved'
     steps:
       - uses: actions/checkout@v4
+      - uses: technote-space/get-diff-action@v6.1.2
+        id: git_diff
+        with:
+          PATTERNS: |
+            x/crosschain/mock/expected_keepers_mocks.go
+            Makefile
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-      - uses: actions/cache@v4
+      - run: |
+          make mocks
+          git diff --exit-code
+
+  test:
+    runs-on: ubuntu-latest
+    #if: github.event.review.state == 'approved'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: technote-space/get-diff-action@v6.1.2
+        id: git_diff
+        with:
+          PATTERNS: |
+            **.go
+            go.mod
+            go.sum
+            .golangci.yml
+            .github/workflows/golang.yml
+            !**.pb.go
+            !**.pb.gw.go
+            !**.pulsar.go
+            !**.sol.go
+            !statik.go
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Cache Go Modules
+        uses: actions/cache@v3
         with:
           path: |
-            ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+            ~/.cache/go-build
+          key: ${{ runner.os }}-golang
           restore-keys: |
-            ${{ runner.os }}-go-
-      - name: Install dependencies
+            ${{ runner.os }}-golang
+      - name: Install Dependencies
         run: go mod download
       - run: make test
 
   lint:
     runs-on: ubuntu-latest
-    needs: test
+    #if: github.event.review.state == 'approved'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -78,18 +90,15 @@ jobs:
       - run: |
           version=$(grep golangci_version= ./Makefile | awk -F '=' '{print $2}')
           echo "GOLANGCI_VERSION=$version" >> $GITHUB_ENV
+      - name: Cache Go-Lint
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/golangci-lint
+          key: ${{ runner.os }}-golangci
+          restore-keys: |
+            ${{ runner.os }}-golangci
       - uses: golangci/golangci-lint-action@v6
         with:
           version: ${{ env.GOLANGCI_VERSION }}
           args: --timeout 10m
-
-  mock:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-      - run: |
-          make mocks
-          git diff --exit-code
